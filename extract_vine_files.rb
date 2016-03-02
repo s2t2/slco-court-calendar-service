@@ -22,7 +22,7 @@ Net::FTP.open(SLCO_FTP_HOST) do |ftp|
   #
 
   ftp.chdir('archive/vine')
-  archive_files = ftp.list
+  archive_files = ftp.nlst("*")
   puts "FOUND #{archive_files.count} ARCHIVE FILES"
   archive_files.each do |file|
     puts file
@@ -32,25 +32,20 @@ Net::FTP.open(SLCO_FTP_HOST) do |ftp|
   # Download incoming files
   #
 
-  EXPECTED_INCOMING_FILE_NAMES = []
-
-  ftp.chdir("../../incoming")
-  incoming_files = ftp.list
-  #incoming_files.reject!{|file| file.include?("sbstnc_tst")}
+  ftp.chdir("/incoming")
+  incoming_files = ftp.nlst("*")
+  #> ["cjs_judge.ul", "login.txt", "sbstnc_tst", "vine", "vine_case.ul", "vine_charge.ul", "vine_court_event.ul", "vine_delete.ul"]
+  # "vine" and "sbstnc_tst" are both empty dirs
+  incoming_files.reject!{|file| ["sbstnc_tst","vine"].include?(file) }
   puts "FOUND #{incoming_files.count} INCOMING FILES"
   incoming_files.each do |file|
-    puts file #> "-rw-r--r--    1 609      2400       338882 Mar 01 07:10 cjs_judge.ul"
-    match = file.match(/\d\d:\d\d/)
-    time = match[0]
-    file_name = file.partition(time).last.strip
-    local_file_name = "slco/vine/incoming/#{file_name}"
-    FileUtils.rm_rf(local_file_name)
-    #ftp.get(file_name, local_file_name) #> Errno::EINVAL: Invalid argument - getpeername(2)
+    local_file = "slco/vine/incoming/#{file}"
+    FileUtils.rm_rf(local_file)
+    begin
+      ftp.get(file, local_file)
+      puts " -- DOWNLOADED #{file} TO #{local_file}"
+    rescue Net::FTPPermError => e
+      puts " -- FAILED TO OPEN #{file}" if e.message.include?("550 Failed to open file.")
+    end
   end
-
-
-  ftp.nlst("*.zip")
-
-  #files = ftp.list('n*')
-  #ftp.getbinaryfile('nif.rb-0.91.gz', 'nif.gz', 1024)
 end
