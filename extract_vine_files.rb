@@ -25,7 +25,14 @@ Net::FTP.open(SLCO_FTP_HOST) do |ftp|
   archive_files = ftp.nlst("*")
   puts "FOUND #{archive_files.count} ARCHIVE FILES"
   archive_files.each do |file|
-    puts file
+    local_file = "slco/vine/archive/#{file}"
+    FileUtils.rm_rf(local_file)
+    begin
+      ftp.get(file, local_file)
+      puts " -- DOWNLOADED #{file} TO #{local_file}"
+    rescue Net::FTPPermError => e
+      puts " -- FAILED TO OPEN #{file}" if e.message.include?("550 Failed to open file.")
+    end
   end
 
   #
@@ -34,8 +41,6 @@ Net::FTP.open(SLCO_FTP_HOST) do |ftp|
 
   ftp.chdir("/incoming")
   incoming_files = ftp.nlst("*")
-  #> ["cjs_judge.ul", "login.txt", "sbstnc_tst", "vine", "vine_case.ul", "vine_charge.ul", "vine_court_event.ul", "vine_delete.ul"]
-  # "vine" and "sbstnc_tst" are both empty dirs
   incoming_files.reject!{|file| ["sbstnc_tst","vine"].include?(file) }
   puts "FOUND #{incoming_files.count} INCOMING FILES"
   incoming_files.each do |file|
